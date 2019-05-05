@@ -1,0 +1,15 @@
+[Unit]
+Description=Remote desktop service (VNC)
+After=syslog.target network.target
+
+[Service]
+Type=forking
+User=root
+PAMName=login
+PIDFile=/root/.vnc/%H:%i.pid
+ExecStartPre=/bin/sh -c '/usr/bin/vncserver -kill :%i > /dev/null 2>&1 || kill -F /root/.vnc/%H%i.pid > /dev/null 2>&1 || rm /tmp/.X11-unix/X1 > /dev/null 2>&1  || rm /tmp/.X1-lock > /dev/null 2>&1 || :'
+ExecStart=/bin/sh -c '/usr/bin/vncserver :%i -geometry 1280x800 -depth 8 -localhost -nolisten tcp'
+ExecStop=/usr/bin/vncserver -kill :%i
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,49 @@
+#!/bin/bash
+. 4Gbot-source
+
+if [ $# -eq 0 ] ; then
+    if [ "$FOURGBOTINTERACTIVE" == "NONINTERACTIVE" ] ; then
+        :
+    elif [ "$FOURGBOTINTERACTIVE" != "INTERACTIVE" ] ; then
+        echo -e "${RED}Usage: ./4Gbot-init botname apn usbdevice keyfile masterip mastersshport mastervncport${SET}"
+        exit
+    fi
+elif [ $# -ne 8 ] ; then
+    echo -e "${RED}Usage: ./4Gbot-init botname \"operator\" \"apn\" usbdevice keyfile masterip mastersshport mastervncport${SET}"
+    exit
+else
+    FOURGBOTINTERACTIVE='NONINTERACTIVE'
+    FOURGBOTHOSTNAME="$1"
+    FOURGBOTOPERATOR="$2"
+    FOURGBOTAPN="$3"
+    FOURGBOTDEVICE="$4"
+    FOURGBOTKEYFILE="$5"
+    FOURGBOTMASTERIP="$6"
+    FOURGBOTMASTERSSHPORT="$7"
+    FOURGBOTMASTERVNCPORT="$8"
+fi
+echo -e "${FOURGBOTGREEN}interactive       : $FOURGBOTINTERACTIVE${FOURGBOTSET}"
+echo -e "${FOURGBOTGREEN}bot name          : $FOURGBOTBOTNAME${FOURGBOTSET}"
+echo -e "${FOURGBOTGREEN}operator          : $FOURGBOTOPERATOR${FOURGBOTSET}"
+echo -e "${FOURGBOTGREEN}apn               : $FOURGBOTAPN${FOURGBOTSET}"
+echo -e "${FOURGBOTGREEN}device            : $FOURGBOTDEVICE${FOURGBOTSET}"
+echo -e "${FOURGBOTGREEN}ssh key file name : $FOURGBOTKEYFILE${FOURGBOTSET}"
+echo -e "${FOURGBOTGREEN}master ip         : $FOURGBOTMASTERIP${FOURGBOTSET}"
+echo -e "${FOURGBOTGREEN}master ssh port   : $FOURGBOTMASTERSSHPORT${FOURGBOTSET}"
+echo -e "${FOURGBOTGREEN}master vnc port   : $FOURGBOTMASTERVNCPORT${FOURGBOTSET}"
+echo -e "${FOURGBOTGREEN}timestamp         : $FOURGBOTRUNTIME${FOURGBOTSET}"
+
+
+initSwap
+initSsh
+initTimezone
+initInstall
+initServices
+initFtp
+initDhclient
+initHost
+addBin
+addScreenrc
+initVnc
+initPpp
+initAutossh

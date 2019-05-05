@@ -1,0 +1,21 @@
+#!/bin/bash
+. 4Gbot-source
+
+if [ $# -ne 3 ] ; then
+    echo -e "${RED}Usage: 4Gbot-groundwork keyname bot_ip master_ip${SET}"
+    exit
+else
+    FOURGBOTKEYNAME="$1"
+    FOURGBOTIPBOT="$2"
+    FOURGBOTIPMASTER="$3"
+    echo -e "${FOURGBOTGREEN}key         : $FOURGBOTKEYNAME${FOURGBOTSET}"
+    echo -e "${FOURGBOTGREEN}bot         : $FOURGBOTIPBOT${FOURGBOTSET}"
+    echo -e "${FOURGBOTGREEN}master      : $FOURGBOTIPMASTER${FOURGBOTSET}"
+fi
+
+ssh-keygen -b 4096 -f $FOURGBOTDIR/backup/$FOURGBOTKEYNAME -C $FOURGBOTKEYNAME
+ssh-add -K $FOURGBOTDIR/backup/$FOURGBOTKEYNAME
+ssh-copy-id -i $FOURGBOTDIR/backup/$FOURGBOTKEYNAME root@$FOURGBOTIPBOT
+ssh-copy-id -i $FOURGBOTDIR/backup/$FOURGBOTKEYNAME root@$FOURGBOTIPMASTER
+scp $FOURGBOTDIR/backup/$FOURGBOTKEYNAME* root@$FOURGBOTIPBOT:/root/.ssh
+scp $FOURGBOTDIR/backup/$FOURGBOTKEYNAME* root@$FOURGBOTIPMASTER:/root/.ssh

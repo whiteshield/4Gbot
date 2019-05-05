@@ -1,0 +1,14 @@
+[Unit]
+Description=PPP Auto Connection
+After=network.target
+
+[Service]
+ExecStart=/bin/sh /usr/src/4Gbot-ppp-reconnect.sh
+WorkingDirectory=/usr/src/
+StandardOutput=inherit
+StandardError=inherit
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target

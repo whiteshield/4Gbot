@@ -1,0 +1,14 @@
+[Unit]
+Description=GSM Hat checker
+After=network.target
+
+[Service]
+ExecStart=/bin/sh /usr/src/4Gbot-autorestart.sh
+WorkingDirectory=/usr/src/
+StandardOutput=inherit
+StandardError=inherit
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target

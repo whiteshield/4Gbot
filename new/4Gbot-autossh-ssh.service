@@ -1,0 +1,13 @@
+[Unit]
+Description=AutoSSH tunnel service to forward ssh to #FOURGBOTMASTERIP:#FOURGBOTMASTERSSHPORT with /root/.ssh/#FOURGBOTKEYFILE
+After=network.target
+
+[Service]
+Type=forking
+User=root
+# PAMName=login
+# Environment="AUTOSSH_GATETIME=0"
+ExecStart=/usr/bin/autossh -M 0 -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -o "ServerAliveInterval 30" -o "ServerAliveCountMax 12000" -o "ExitOnForwardFailure=yes" -f -i /root/.ssh/#FOURGBOTKEYFILE -NR #FOURGBOTMASTERSSHPORT:localhost:22 root@#FOURGBOTMASTERIP
+
+[Install]
+WantedBy=multi-user.target

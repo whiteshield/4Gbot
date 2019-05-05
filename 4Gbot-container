@@ -1,0 +1,105 @@
+#!/bin/bash
+. 4Gbot-source
+
+
+if [ $# -eq 0 ] ; then
+    echo -e "${FOURGBOTRED}Usage: ./4Gbot-container c|m|u|l [volumename [volumesize]]"
+    exit
+elif [ $# -eq 1 ] ; then
+    FOURGBOTINTERACTIVE='INTERACTIVE'
+elif [ $# -eq 2 ] ; then
+    FOURGBOTVOLUMENAME="$2"
+elif [ $# -eq 3 ] ; then
+    FOURGBOTVOLUMENAME="$2"
+    FOURGBOTVOLUMESIZE="$3"
+else
+    echo -e "${FOURGBOTRED}Usage: ./4Gbot-container c|m|u|l [volumename [volumesize]]"
+    exit
+fi
+
+if [[ ! -d "$FOURGBOTVOLUMEDIR" ]]; then
+    mkdir -p $FOURGBOTVOLUMEDIR
+fi
+if [[ ! -d "$FOURGBOTMOUNTDIR$FOURGBOTVOLUMENAME" ]]; then
+    mkdir -p $FOURGBOTMOUNTDIR$FOURGBOTVOLUMENAME
+fi
+
+
+function containerCreate ()
+{
+    dd if=/dev/zero of="$FOURGBOTVOLUMEDIR$FOURGBOTVOLUMENAME" bs=1 count=0 seek="$FOURGBOTVOLUMESIZE" &&
+    cryptsetup -v -y -c aes-xts-plain64 -s 512 -h sha512 -i 5000 --use-random luksFormat "$FOURGBOTVOLUMEDIR$FOURGBOTVOLUMENAME"
+}
+
+
+function containerOpen ()
+{
+    cryptsetup -v -c aes-xts-plain64 -s 512 -h sha512 -i 5000 luksOpen "$FOURGBOTVOLUMEDIR$FOURGBOTVOLUMENAME" "$FOURGBOTVOLUMENAME"
+}
+
+
+function containerFormat ()
+{
+    mkfs.ext4 /dev/mapper/"$FOURGBOTVOLUMENAME"
+}
+
+
+function containerUmount ()
+{
+    umount /dev/mapper/"$FOURGBOTVOLUMENAME"
+    cryptsetup luksClose "$FOURGBOTVOLUMENAME"
+}
+
+
+function containerMount ()
+{
+    mount /dev/mapper/"$FOURGBOTVOLUMENAME" "$FOURGBOTMOUNTDIR$FOURGBOTVOLUMENAME/"
+}
+
+
+function containerPermissions ()
+{
+    chown -R "$USER":"$USER" "$FOURGBOTMOUNTDIR$FOURGBOTVOLUMENAME"
+}
+
+
+function containerList ()
+{
+
+    for CONTAINER in `ls $FOURGBOTVOLUMEDIR` ; do
+        if [ -L /dev/mapper/$CONTAINER ] ; then
+            echo -e "${FOURGBOTGREEN}$CONTAINER\tmounted    \t`ls $FOURGBOTVOLUMEDIR$CONTAINER -l --block-size=M | awk '{print $5}'`${FOURGBOTSET}"
+        else
+            echo -e "${FOURGBOTRED}$CONTAINER\tnot mounted\t`ls $FOURGBOTVOLUMEDIR$CONTAINER -l --block-size=M | awk '{print $5}'`${FOURGBOTSET}"
+        fi
+    done
+}
+
+
+case "$1" in
+    "c")
+        notification "Create container $FOURGBOTVOLUMEDIR$FOURGBOTVOLUMENAME with size $FOURGBOTVOLUMESIZE"
+        containerCreate;
+        containerOpen;
+        containerFormat;
+        containerMount;
+        containerPermissions;
+        ;;
+    "m")
+        notification "Mount container $FOURGBOTVOLUMEDIR$FOURGBOTVOLUMENAME"
+        containerOpen;
+        containerMount;
+        ;;
+    "u")
+        notification "Unmount container $FOURGBOTVOLUMEDIR$FOURGBOTVOLUMENAME"
+        containerUmount;
+        ;;
+    "l")
+        notification "Containers"
+        containerList;
+        ;;
+    *)
+        echo "You have failed to specify what to do correctly."
+        exit 1
+    ;;
+esac

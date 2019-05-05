@@ -1,0 +1,14 @@
+[Unit]
+Description=4Gbot status logger
+After=network.target
+
+[Service]
+ExecStart=/bin/sh /usr/src/4Gbot-status-logger.sh
+WorkingDirectory=/usr/src/
+StandardOutput=inherit
+StandardError=inherit
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target

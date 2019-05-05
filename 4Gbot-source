@@ -1,0 +1,459 @@
+FOURGBOTDIR="$( cd "$(dirname $BASH_SOURCE)" ; pwd -P )"
+FOURGBOTYELLOW='\033[1;33m'
+FOURGBOTGREEN='\033[1;32m'
+FOURGBOTRED='\033[1;31m'
+FOURGBOTSET='\033[0m'
+
+. $FOURGBOTDIR/4Gbot-variables
+
+if [[ -f "$FOURGBOTDIR/4Gbot-variables-override" ]] ; then
+    . $FOURGBOTDIR/4Gbot-variables-override
+fi
+
+FOURGBOTRUNTIME=`date +%s`
+
+if [ "$FOURGBOTINTERACTIVE" == "" ] ; then
+    FOURGBOTINTERACTIVE='INTERACTIVE'
+fi
+
+
+function notification ()
+{
+    echo -e "${FOURGBOTYELLOW}" "\n[+] $1" "${FOURGBOTSET}\n"
+}
+
+
+function questionYn ()
+{
+    if [ "$FOURGBOTINTERACTIVE" == "INTERACTIVE" ]; then
+        while [ 1 ] ; do
+            echo -e "${FOURGBOTGREEN}$1 [y/n, default Y] ${FOURGBOTSET}"
+            read answer
+            case $answer in
+                [Yy]* )  return 0;;
+                [Nn]* )  return 1;;
+                "" )     return 0;;
+                *)  echo -e "${FOURGBOTRED}You did not choose y/n!${FOURGBOTSET}";;
+            esac
+        done
+    else
+        return 0
+    fi
+}
+
+
+function questionNy ()
+{
+    if [[ "$FOURGBOTINTERACTIVE" == "INTERACTIVE" ]]; then
+        while [ 1 ] ; do
+            echo -e "${FOURGBOTGREEN}$1 [y/n, default N] ${FOURGBOTSET}"
+            read answer
+            case $answer in
+                [Yy]* )  return 0;;
+                [Nn]* )  return 1;;
+                "" )     return 1;;
+                *)  echo -e "${FOURGBOTRED}You did not choose y/n!${FOURGBOTSET}";;
+            esac
+        done
+    else
+        return 1
+    fi
+}
+
+
+function copyNewFile ()
+{
+    if [[ -f "$FOURGBOTDIR/override/$1" ]] ; then
+        cp $FOURGBOTDIR/override/$1 $2
+    else
+        cp $FOURGBOTDIR/new/$1 $2
+    fi
+}
+
+
+function initSwap ()
+{
+    if [[ "`swapon -s | grep "/swapfile" | wc -l`" == "0" ]] ; then
+        if questionYn "Do you need a swap file?" ; then
+            if [[ ! -f "/swapfile" ]]; then
+                notification "Swap file creation"
+                fallocate -l 2G /swapfile
+                chmod 600 /swapfile
+                mkswap /swapfile
+                swapon /swapfile
+            fi
+            if ! (grep -q '/swapfile' /etc/fstab ); then
+                notification "Swap to /etc/fstab"
+                cp /etc/fstab $FOURGBOTDIR/backup/etc_fstab.${FOURGBOTRUNTIME}
+                echo "/swapfile swap swap defaults 0 0" >> /etc/fstab
+            fi
+        fi
+    else
+        notification "Swap file already exists and working"
+    fi
+}
+
+function initSsh ()
+{
+    if questionYn "Do you want to reconfigure SSH?" ; then
+        if [[ ! -d "$FOURGBOTDIR/backup/etc_ssh_ssh_host/${FOURGBOTRUNTIME}" ]]; then
+            mkdir -p $FOURGBOTDIR/backup/etc_ssh_ssh_host/$FOURGBOTRUNTIME
+        fi
+        notification "SSH reconfiguration"
+        mv /etc/ssh/ssh_host_* $FOURGBOTDIR/backup/etc_ssh_ssh_host/$FOURGBOTRUNTIME/
+        dpkg-reconfigure openssh-server
+        systemctl restart ssh
+        if [[ ! -d "$HOME/.ssh" ]]; then
+            mkdir -p $HOME/.ssh
+            chmod 0700 $HOME/.ssh
+        fi
+        if [[ -f "$HOME/.ssh/config" ]]; then
+            cp $HOME/.ssh/config $FOURGBOTDIR/backup/.ssh_config.${FOURGBOTRUNTIME}
+        fi
+        copyNewFile .ssh_config $HOME/.ssh/config
+    fi
+}
+
+function initInstall ()
+{
+    if questionYn "Do you want to update and install packages?" ; then
+        notification "Package updates"
+        apt update
+        DEBIAN_FRONTEND=noninteractive apt upgrade -y
+        DEBIAN_FRONTEND=noninteractive apt install -y ppp midori mc dnsenum nbtscan enum4linux hash-identifier socat rinetd httptunnel cryptsetup cryptmount lynx metasploit-framework ncat secure-socket-funneling-windows-binaries rdesktop sqsh traceroute dirb dirbuster cifs-utils snmpenum mariadb-client powersploit impacket-scripts responder bluelog blueranger btscanner redfang spooftooph kismet kismet-plugins pure-ftpd htop iotop glances pure-ftpd-common tightvncserver autocutsel autossh minicom
+    fi
+}
+
+function initTimezone ()
+{
+    if questionYn "Do you want to set timezone Etc/UTC?" ; then
+        timedatectl set-timezone "Etc/UTC"
+        notification "Timezone set to Etc/UTC"
+        ntpdate time.nist.gov
+    fi
+}
+
+
+function initServices ()
+{
+    if questionYn "Do you want to start and configure services (disable ModemManager; disable lightdm autostart; enable apache and postgresql; init msf)?" ; then
+        notification "Service configurations and updates"
+        systemctl disable ModemManager.service
+        systemctl disable NetworkManager
+        disableLightdm
+        systemctl restart apache2
+        systemctl enable apache2
+        systemctl restart postgresql
+        systemctl enable postgresql
+        msfdb init
+        cp /etc/sysctl.conf $FOURGBOTDIR/backup/etc_sysctl.conf.${FOURGBOTRUNTIME}
+        sed -i "s/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/" /etc/sysctl.conf
+        if [[ -f "/usr/src/4Gbot-status-logger.sh" ]] ; then
+            cp /usr/src/4Gbot-status-logger.sh $FOURGBOTDIR/backup/usr_src_4Gbot-status-logger.sh.${FOURGBOTRUNTIME}
+        fi
+        if [[ -f "/etc/systemd/system/4Gbot-status-logger.service" ]] ; then
+            cp /etc/systemd/system/4Gbot-status-logger.service $FOURGBOTDIR/backup/etc_systemd_system_4Gbot-status-logger.service.${FOURGBOTRUNTIME}
+        fi
+        copyNewFile 4Gbot-status-logger.sh /usr/src/
+        copyNewFile 4Gbot-status-logger.service /etc/systemd/system/
+        systemctl daemon-reload
+        systemctl enable 4Gbot-status-logger.service
+        systemctl restart 4Gbot-status-logger.service
+    fi
+}
+
+
+function disableLightdm ()
+{
+    systemctl set-default multi-user.target
+}
+
+
+function enableLightdm ()
+{
+    systemctl set-default graphical.target
+}
+
+
+function initFtp ()
+{
+    if questionYn "Do you want to start and configure ftp?" ; then
+        notification "FTP configuration (user: ftp pass: ftppass)"
+        groupadd ftpgroup
+        useradd -g ftpgroup -d /dev/null -s /etc ftpuser
+        mkdir /ftphome
+        chown -R ftpuser:ftpgroup /ftphome
+        (echo ftppass; echo ftppass) | pure-pw useradd ftp -u ftpuser -g ftpgroup -d /ftphome/
+        pure-pw mkdb
+        ln -s /etc/pure-ftpd/pureftpd.passwd /etc/pureftpd.passwd
+        ln -s /etc/pure-ftpd/pureftpd.pdb /etc/pureftpd.pdb
+        ln -s /etc/pure-ftpd/conf/PureDB /etc/pure-ftpd/auth/PureDB
+        /etc/init.d/pure-ftpd restart
+    fi
+}
+
+
+function initDhclient ()
+{
+    if questionYn "Do you want to remove ntp-servers from dhclient?" ; then
+        if (grep -q ', ntp-servers' /etc/dhcp/dhclient.conf ); then
+            cp /etc/dhcp/dhclient.conf $FOURGBOTDIR/backup/etc_dhcp_dhclient.conf.${FOURGBOTRUNTIME}
+            sed -i "s/, ntp-servers//" /etc/dhcp/dhclient.conf
+        fi
+    fi
+}
+
+
+function initHost ()
+{
+    if questionYn "Do you want to setup new hostname (name your bot)?" ; then
+        notification "Hostname reconfiguration"
+        if [[ "$FOURGBOTINTERACTIVE" == "INTERACTIVE" ]] ; then
+            echo "Bot name (hostname)?"
+            read FOURGBOTBOTNAME
+            echo "What is your master server IP address?"
+            read FOURGBOTMASTERIP
+        fi
+        cp /etc/hostname $FOURGBOTDIR/backup/etc_hostname.${FOURGBOTRUNTIME}
+        cp /etc/hosts $FOURGBOTDIR/backup/etc_hosts.${FOURGBOTRUNTIME}
+        echo $FOURGBOTBOTNAME > /etc/hostname
+        sed -i "1s/.*/127.0.0.1       $FOURGBOTBOTNAME localhost/" /etc/hosts
+        cat /etc/hosts | grep -v " master " > /tmp/hosts
+        echo "$FOURGBOTMASTERIP master " >> /tmp/hosts
+        mv /tmp/hosts /etc/hosts
+        hostname $FOURGBOTBOTNAME
+    fi
+}
+
+
+function addBin ()
+{
+    if questionYn "Do you want fancy prompt and add $HOME/bin to your path (overwrite .bashrc)?" ; then
+        if [[ ! -d "$HOME/bin" ]]; then
+            mkdir -p $HOME/bin
+        fi
+        cp $HOME/.bashrc $FOURGBOTDIR/backup/.bashrc.${FOURGBOTRUNTIME}
+        copyNewFile .bashrc $HOME/.bashrc
+    fi
+}
+
+
+function addScreenrc ()
+{
+    if questionYn "Do you want to create $HOME/.screenrc?" ; then
+        if [[ -f "$HOME/.screenrc" ]]; then
+            cp $HOME/.screenrc $FOURGBOTDIR/backup/.screenrc.${FOURGBOTRUNTIME}
+        fi
+        copyNewFile .screenrc $HOME/.screenrc
+    fi
+}
+
+
+function initVnc ()
+{
+    if questionYn "Do you want to setup and autostart VNC server on localhost?" ; then
+        notification "VNC configuration on :1 with password vncpass (systemctl status 4Gbot-vnc-server@1.service)"
+        if [[ ! -d "$HOME/.vnc" ]]; then
+            mkdir -p $HOME/.vnc
+        fi
+        if [[ -f "$HOME/.vnc/passwd" ]]; then
+            cp $HOME/.vnc/passwd $FOURGBOTDIR/backup/.vnc_passwd.${FOURGBOTRUNTIME}
+        fi
+        if [[ -f "$HOME/.vnc/xstartup" ]]; then
+            cp $HOME/.vnc/xstartup $FOURGBOTDIR/backup/.vnc_xstartup.${FOURGBOTRUNTIME}
+        fi
+        if [[ -f "/etc/systemd/system/4Gbot-vnc-server@.service" ]]; then
+            cp /etc/systemd/system/4Gbot-vnc-server@.service $FOURGBOTDIR/backup/etc_systemd_system_4Gbot-vnc-server.service.${FOURGBOTRUNTIME}
+        fi
+        (echo vncpass) | vncpasswd -f > $HOME/.vnc/passwd
+        chmod 0600 $HOME/.vnc/passwd
+        copyNewFile .vnc_xstartup $HOME/.vnc/xstartup
+        copyNewFile 4Gbot-vnc-server.service /etc/systemd/system/4Gbot-vnc-server@.service
+        systemctl daemon-reload
+        systemctl enable 4Gbot-vnc-server@1.service
+        systemctl restart 4Gbot-vnc-server@1.service
+    fi
+}
+
+
+function initPpp ()
+{
+    if questionYn "Do you want to setup PPP connection?" ; then
+        if [[ "$FOURGBOTINTERACTIVE" == "INTERACTIVE" ]] ; then
+            echo "What is your operator name?"
+            read FOURGBOTOPERATOR
+            echo "What is your operator APN?"
+            read FOURGBOTAPN
+            echo "What is your device communication PORT? (like ttyUSB3)?"
+            read FOURGBOTDEVICE
+            echo "What is your master server IP address?"
+            read FOURGBOTMASTERIP
+        fi
+        FOURGBOTOPERATOR=${FOURGBOTOPERATOR/ /\\\\s}
+        notification "PPP connection setup with APN $FOURGBOTAPN and device $FOURGBOTDEVICE"
+        if [[ -f "/etc/chatscripts/chat-connect" ]] ; then
+            cp /etc/chatscripts/chat-connect $FOURGBOTDIR/backup/etc_chatscripts_chat-connect.${FOURGBOTRUNTIME}
+        fi
+        if [[ -f "/etc/chatscripts/chat-disconnect" ]] ; then
+            cp /etc/chatscripts/chat-disconnect $FOURGBOTDIR/backup/etc_chatscripts_chat-disconnect.${FOURGBOTRUNTIME}
+        fi
+        copyNewFile chat-connect /etc/chatscripts/
+        copyNewFile chat-disconnect /etc/chatscripts/
+        if ! [[ -d "/etc/ppp/peers" ]] ; then
+            mkdir -p /etc/ppp/peers
+        fi
+        if [[ -f "/etc/ppp/peers/provider" ]] ; then
+            cp /etc/ppp/peers/provider $FOURGBOTDIR/backup/etc_ppp_peers_provider.${FOURGBOTRUNTIME}
+        fi
+        copyNewFile provider /etc/ppp/peers/provider
+        sed -i "s/#FOURGBOTOPERATOR/$FOURGBOTOPERATOR/" /etc/ppp/peers/provider
+        sed -i "s/#FOURGBOTAPN/$FOURGBOTAPN/" /etc/ppp/peers/provider
+        sed -i "s/#FOURGBOTDEVICE/$FOURGBOTDEVICE/" /etc/ppp/peers/provider
+        if [[ -f "/etc/ppp/ip-up" ]] ; then
+            cp /etc/ppp/ip-up $FOURGBOTDIR/backup/etc_ppp_ip-up.${FOURGBOTRUNTIME}
+        fi
+        copyNewFile ip-up /etc/ppp/
+        sed -i "s/#FOURGBOTMASTERIP/$FOURGBOTMASTERIP/" /etc/ppp/ip-up
+        if [[ -f "/etc/ppp/ip-down" ]] ; then
+            cp /etc/ppp/ip-down $FOURGBOTDIR/backup/etc_ppp_ip-down.${FOURGBOTRUNTIME}
+        fi
+        copyNewFile ip-down /etc/ppp/
+        sed -i "s/#FOURGBOTMASTERIP/$FOURGBOTMASTERIP/" /etc/ppp/ip-down
+        if ! (grep -v "^#" /boot/config.txt | grep -q 'max_usb_current'  ); then
+            cp /boot/config.txt $FOURGBOTDIR/backup/boot_config.txt.${FOURGBOTRUNTIME}
+            echo "max_usb_current=1" >> /boot/config.txt
+        fi
+        if questionYn "Do you want to enable PPP service autostart?" ; then
+            enablePpp
+        fi
+        touch /var/log/ppp-ipupdown.log
+    fi
+}
+
+
+function enablePpp ()
+{
+    notification "Enable PPP service autostart"
+    if [[ "$FOURGBOTINTERACTIVE" == "INTERACTIVE" ]] ; then
+        echo "What is your device communication PORT? (like ttyUSB3)?"
+        read FOURGBOTDEVICE
+    fi
+    if [[ -f "/usr/src/4Gbot-ppp-reconnect.sh" ]] ; then
+        cp /usr/src/4Gbot-ppp-reconnect.sh $FOURGBOTDIR/backup/usr_src_4Gbot-ppp-reconnect.sh.${FOURGBOTRUNTIME}
+    fi
+    if [[ -f "/etc/systemd/system/4Gbot-ppp-reconnect.service" ]] ; then
+        cp /etc/systemd/system/4Gbot-ppp-reconnect.service $FOURGBOTDIR/backup/etc_systemd_system_4Gbot-ppp-reconnect.service.${FOURGBOTRUNTIME}
+    fi
+    if [[ -f "/usr/src/4Gbot-autorestart.sh" ]] ; then
+        cp /usr/src/4Gbot-autorestart.sh $FOURGBOTDIR/backup/usr_src_4Gbot-autorestart.sh.${FOURGBOTRUNTIME}
+    fi
+    if [[ -f "/etc/systemd/system/4Gbot-autorestart.service" ]] ; then
+        cp /etc/systemd/system/4Gbot-autorestart.service $FOURGBOTDIR/backup/etc_systemd_system_4Gbot-autorestart.service.${FOURGBOTRUNTIME}
+    fi
+    copyNewFile 4Gbot-ppp-reconnect.sh /usr/src/
+    copyNewFile 4Gbot-ppp-reconnect.service /etc/systemd/system/
+    copyNewFile 4Gbot-autorestart.sh /usr/src/
+    copyNewFile 4Gbot-autorestart.service /etc/systemd/system/
+    sed -i "s/#FOURGBOTDEVICE/$FOURGBOTDEVICE/" /usr/src/4Gbot-autorestart.sh
+    sed -i "s/#FOURGBOTMASTERIP/$FOURGBOTMASTERIP/" /usr/src/4Gbot-ppp-reconnect.sh
+    systemctl daemon-reload
+    systemctl enable 4Gbot-ppp-reconnect.service
+    systemctl restart 4Gbot-ppp-reconnect.service
+    systemctl enable 4Gbot-autorestart.service
+    systemctl restart 4Gbot-autorestart.service
+}
+
+
+function disablePpp ()
+{
+    notification "Disable PPP service autostart"
+    systemctl daemon-reload
+    systemctl stop 4Gbot-ppp-reconnect.service
+    systemctl disable 4Gbot-ppp-reconnect.service
+    systemctl stop 4Gbot-autorestart.service
+    systemctl disable 4Gbot-autorestart.service
+}
+
+
+function initAutossh ()
+{
+    if questionYn "Do you want to setup autossh connection and service?" ; then
+        if [[ "$FOURGBOTINTERACTIVE" == "INTERACTIVE" ]] ; then
+            echo "What is your keyfile name (in /root/.ssh/)?"
+            read FOURGBOTKEYFILE
+            echo "What is your master server IP address?"
+            read FOURGBOTMASTERIP
+            echo "What is your master server vnc port?"
+            read FOURGBOTMASTERVNCPORT
+            echo "What is your master server ssh port?"
+            read FOURGBOTMASTERSSHPORT
+        fi
+        if [[ "$FOURGBOTKEYFILE" != "" && "$FOURGBOTMASTERIP" != "" && "$FOURGBOTMASTERVNCPORT" != "" && "$FOURGBOTMASTERSSHPORT" != "" ]] ; then
+            notification "Enable autossh service"
+            if [[ -f "/etc/systemd/system/4Gbot-autossh-vnc.service" ]] ; then
+                cp /etc/systemd/system/4Gbot-autossh-vnc.service $FOURGBOTDIR/backup/etc_systemd_system_4Gbot-autossh-vnc.service.${FOURGBOTRUNTIME}
+            fi
+            if [[ -f "/etc/systemd/system/4Gbot-autossh-ssh.service" ]] ; then
+                cp /etc/systemd/system/4Gbot-autossh-ssh.service $FOURGBOTDIR/backup/etc_systemd_system_4Gbot-autossh-ssh.service.${FOURGBOTRUNTIME}
+            fi
+            copyNewFile 4Gbot-autossh-vnc.service /etc/systemd/system/
+            copyNewFile 4Gbot-autossh-ssh.service /etc/systemd/system/
+            sed -i "s/#FOURGBOTKEYFILE/$FOURGBOTKEYFILE/" /etc/systemd/system/4Gbot-autossh-vnc.service
+            sed -i "s/#FOURGBOTKEYFILE/$FOURGBOTKEYFILE/" /etc/systemd/system/4Gbot-autossh-ssh.service
+            sed -i "s/#FOURGBOTMASTERIP/$FOURGBOTMASTERIP/" /etc/systemd/system/4Gbot-autossh-vnc.service
+            sed -i "s/#FOURGBOTMASTERIP/$FOURGBOTMASTERIP/" /etc/systemd/system/4Gbot-autossh-ssh.service
+            sed -i "s/#FOURGBOTMASTERVNCPORT/$FOURGBOTMASTERVNCPORT/" /etc/systemd/system/4Gbot-autossh-vnc.service
+            sed -i "s/#FOURGBOTMASTERSSHPORT/$FOURGBOTMASTERSSHPORT/" /etc/systemd/system/4Gbot-autossh-ssh.service
+            enableAutossh
+        else
+            notification "Missing inputs for autossh service setup"
+        fi
+    fi
+}
+
+
+function overwriteResolv ()
+{
+    cp /etc/ppp/resolv.conf /etc/resolv.conf
+    if [ -e /var/run/nscd.pid ]; then
+        /etc/init.d/nscd restart || true
+    fi
+}
+
+
+function enableAutossh ()
+{
+    systemctl daemon-reload
+    systemctl enable 4Gbot-autossh-vnc.service
+    systemctl enable 4Gbot-autossh-ssh.service
+    systemctl restart 4Gbot-autossh-vnc.service
+    systemctl restart 4Gbot-autossh-ssh.service
+}
+
+
+function disableAutossh ()
+{
+    systemctl daemon-reload
+    systemctl stop 4Gbot-autossh-vnc.service
+    systemctl stop 4Gbot-autossh-ssh.service
+    systemctl disable 4Gbot-autossh-vnc.service
+    systemctl disable 4Gbot-autossh-ssh.service
+}
+
+
+function enableEth0Dhcp ()
+{
+    if [[ -f "/etc/network/interfaces" ]] ; then
+        cp /etc/network/interfaces $FOURGBOTDIR/backup/etc_network_interfaces.${FOURGBOTRUNTIME}
+    fi
+    copyNewFile interfaces_eth0_dhcp /etc/network/interfaces
+}
+
+
+function disableEth0Dhcp ()
+{
+    if [[ -f "/etc/network/interfaces" ]] ; then
+        cp /etc/network/interfaces $FOURGBOTDIR/backup/etc_network_interfaces.${FOURGBOTRUNTIME}
+    fi
+    copyNewFile interfaces_eth0_manual /etc/network/interfaces
+}
