@@ -44,6 +44,26 @@ Parameters:
 - `22001`: tunneled ssh port on master
 - `59001`: tunneled vnc port on master
 
+### On your master server
+
+```
+ssh root@localhost -p 22001 -i ~/.ssh/bot01key
+```
+
+If you can't connect, check the tunnel first:
+
+```
+netstat -utapen | grep 22001
+```
+
+If the tunnel already opened, but the ssh command unabée to connect, kill the process which currently using port 22001:
+
+```
+fuser -k 22001/tcp
+```
+
+And try again to connect.
+
 ## Before we start
 
 ### Hardware requirements for bot
@@ -218,6 +238,8 @@ Network management:
 
 - `systemctl enable NetworkManager`
 - `netstat -utapen`
+- `fuser -k 22001/tcp`
+- `fuser -k 59001/tcp`
 - `overwriteResolv`
 - `enablePpp`
 - `disablePpp`
