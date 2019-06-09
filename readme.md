@@ -10,17 +10,39 @@ The aim of the project was to create and to easily reproduce a 4G/LTE enabled ra
 ```
 git clone https://github.com/whiteshield/4Gbot.git 4Gbot
 cd 4Gbot
-./4Gbot-pre bot01key kalibotip masterip
+./4Gbot-pre bot01key 192.168.1.2 1.2.3.4 root 22
 ```
+
+Parameters:
+
+- `bot01key`: ssh keyfile name
+- `192.168.1.2`: your kali bot ip address
+- `1.2.3.4`: your master server's ip address
+- `root`: user name for connecting to master
+- `22`: master server's ssh port number
+
 ### On your kali bot
 
 ```
 passwd
 git clone https://github.com/whiteshield/4Gbot.git 4Gbot
 cd 4Gbot
-./4Gbot-init bot01 operator apn ttyUSB3 bot01key masterip 20001 50001
+./4Gbot-init bot01 "Telekom HU" internet ttyUSB3 bot01key 1.2.3.4 root 22 22001 59001
 reboot
 ```
+
+Parameters:
+
+- `bot01`: your kai bot's name
+- `"Telekom HU"`: internet provider
+- `internet`: APN
+- `ttyUSB3`: sixfab device
+- `bot01key`: ssh keyfile name
+- `1.2.3.4`: your master server's ip address
+- `root`: user name for connecting to master
+- `22`: master server's ssh port number
+- `22001`: tunneled ssh port on master
+- `59001`: tunneled vnc port on master
 
 ## Before we start
 
@@ -42,14 +64,14 @@ Why sixfab? The shields work properly, and they do world wide shipping.
 
 ### Software requirements for your workstation
 
-- kali linux raspberrypi 3 64 bit [2019.1 at the present time](https://www.offensive-security.com/kali-linux-arm-images/#1493408272250-e17e9049-9ce8)
+- ssh-copy-id in your terminal
+- kali linux raspberrypi 3 64 bit [2019.2 at the present time](https://www.offensive-security.com/kali-linux-arm-images/#1493408272250-e17e9049-9ce8)
 - [balena etcher](https://www.balena.io/etcher/) (or other image writer)
 
 ### Master server requirement
 
 - directly accessible from the internet
-- root user login enabled
-- open ports for ssh tunneling
+- passwordless login enabled
 - kali linux recommended 
 
 ## Steps
@@ -76,9 +98,9 @@ I used my macbook to generate a passwordless ssh key, and added a public key to 
 
 If you have OSX (or linux) on your workstation, I encourage you to clone the repo to your machine and use `4Gbot-pre` to do the work.
 
-For windows users, generate an ssh key with puttygen, copy it to your fresh kali bot and to your master server `/root/.ssh/` folder. If the folder does not exist, create it, but do not forget to configure the access rights with chmod to 0700. And create an `authorized_keys` file as well with 0600 rights within `/root/.ssh/`, and copy your public key into that file too. You can use that key to log on to your kali bot too. Set it in your putty session or in pageant (putty ssh authentication agent).
+For windows users, generate an ssh key with puttygen, copy it to your fresh kali bot and to your master server `~/.ssh/` folder. If the folder does not exist, create it, but do not forget to configure the access rights with chmod to 0700. And create an `authorized_keys` file as well with 0600 rights within `/root/.ssh/`, and copy your public key into that file too. You can use that key to log on to your kali bot too. Set it in your putty session or in pageant (putty ssh authentication agent).
 
-Do not forget to check the passwordless login with simple ssh commands, such as `ssh root@kalibotip` and `ssh root@masterip` on your workstation, and `ssh root@masterip -i /root/.ssh/keyfilename` on your kali bot. If you would like to use agent forwarding, use `ssh -A` when you connect to your kali bot.
+Do not forget to check the passwordless login with simple ssh commands, such as `ssh root@kalibotip` and `ssh masteruser@masterip` on your workstation, and `ssh masteruser@masterip -i /root/.ssh/keyfilename -p mastersshport` on your kali bot. If you would like to use agent forwarding, use `ssh -A` when you connect to your kali bot.
 
 ### Setup your rpi
 
@@ -123,17 +145,17 @@ After the restart you can see a connected `ppp0` device in `ifconfig`.
 
 You can log in on your master to the bot:
 
-`ssh root@localhost -p mastersshport -i /root/.ssh/keyfilename`
+`ssh root@localhost -p mastersshtunnelport -i /root/.ssh/keyfilename`
 
 You can tunnel the vnc on your workstation:
 
-`ssh -L 5901:localhost:mastervncport -N -f root@masterip`
+`ssh -L 5901:localhost:mastervnctunnelport -N -f masteruser@masterip -p mastersshport`
 
 You can access your rpi's vnc on `localhost:1`.
 
 #### Troubleshooting
 
-If the connection is not working, simply run `netstat -utapen` on your master, find and kill the process which connects to your mastersshport or mastervncport. Autossh will reconnect within a minute.
+If the connection is not working, simply run `netstat -utapen` on your master, find and kill the process which connects to your mastersshtunnelport or mastervnctunnelport. Autossh will reconnect within a minute.
 
 When you are connected through 4G network, sometimes somehow `/etc/resolv.conf` is not updated with the network provider data. You need to update it manually or with the `overwriteResolv` command.
 
@@ -148,7 +170,7 @@ This project aims to automate the whole process, for regular use as you clean th
 You can start the init scripts with parameters:
 
 ```
-./4Gbot-init botname apn usbdevice keyfile masterip mastersshport mastervncport
+./4Gbot-init botname operator apn usbdevice keyfile masterip masteruser mastersshport mastersshtunnelport mastervnctunnelport
 ```
 
 #### Parameters in file
@@ -172,7 +194,7 @@ Moreover, if you would like to change the files in `4Gbot/new/` directory, you c
 **On your workstation:**
 
 - `ssh-keygen -R kalibotip`
-- `ssh -L 5901:localhost:mastervncport -N -f root@masterip`
+- `ssh -L 5901:localhost:mastervnctunnelport -N -f masterusert@masterip -p mastersshport`
 
 **On your kali bot:**
 

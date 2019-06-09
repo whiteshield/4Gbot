@@ -383,12 +383,16 @@ function initAutossh ()
             read FOURGBOTKEYFILE
             echo "What is your master server IP address?"
             read FOURGBOTMASTERIP
-            echo "What is your master server vnc port?"
-            read FOURGBOTMASTERVNCPORT
+            echo "What is your master server user?"
+            read FOURGBOTMASTERUSER
             echo "What is your master server ssh port?"
             read FOURGBOTMASTERSSHPORT
+            echo "What is your master server ssh tunnel port?"
+            read FOURGBOTMASTERSSHTUNNELPORT
+            echo "What is your master server vnc tunnel port?"
+            read FOURGBOTMASTERVNCTUNNELPORT
         fi
-        if [[ "$FOURGBOTKEYFILE" != "" && "$FOURGBOTMASTERIP" != "" && "$FOURGBOTMASTERVNCPORT" != "" && "$FOURGBOTMASTERSSHPORT" != "" ]] ; then
+        if [[ "$FOURGBOTKEYFILE" != "" && "$FOURGBOTMASTERIP" && "$FOURGBOTMASTERUSER" != "" && "$FOURGBOTMASTERSSHPORT" != "" && "$FOURGBOTMASTERVNCTUNNELPORT" != "" && "$FOURGBOTMASTERSSHTUNNELPORT" != "" ]] ; then
             notification "Enable autossh service"
             if [[ -f "/etc/systemd/system/4Gbot-autossh-vnc.service" ]] ; then
                 cp /etc/systemd/system/4Gbot-autossh-vnc.service $FOURGBOTDIR/backup/etc_systemd_system_4Gbot-autossh-vnc.service.${FOURGBOTRUNTIME}
@@ -402,8 +406,12 @@ function initAutossh ()
             sed -i "s/#FOURGBOTKEYFILE/$FOURGBOTKEYFILE/" /etc/systemd/system/4Gbot-autossh-ssh.service
             sed -i "s/#FOURGBOTMASTERIP/$FOURGBOTMASTERIP/" /etc/systemd/system/4Gbot-autossh-vnc.service
             sed -i "s/#FOURGBOTMASTERIP/$FOURGBOTMASTERIP/" /etc/systemd/system/4Gbot-autossh-ssh.service
-            sed -i "s/#FOURGBOTMASTERVNCPORT/$FOURGBOTMASTERVNCPORT/" /etc/systemd/system/4Gbot-autossh-vnc.service
+            sed -i "s/#FOURGBOTMASTERUSER/$FOURGBOTMASTERUSER/" /etc/systemd/system/4Gbot-autossh-vnc.service
+            sed -i "s/#FOURGBOTMASTERUSER/$FOURGBOTMASTERUSER/" /etc/systemd/system/4Gbot-autossh-ssh.service
+            sed -i "s/#FOURGBOTMASTERSSHPORT/$FOURGBOTMASTERSSHPORT/" /etc/systemd/system/4Gbot-autossh-vnc.service
             sed -i "s/#FOURGBOTMASTERSSHPORT/$FOURGBOTMASTERSSHPORT/" /etc/systemd/system/4Gbot-autossh-ssh.service
+            sed -i "s/#FOURGBOTMASTERVNCTUNNELPORT/$FOURGBOTMASTERVNCTUNNELPORT/" /etc/systemd/system/4Gbot-autossh-vnc.service
+            sed -i "s/#FOURGBOTMASTERSSHTUNNELPORT/$FOURGBOTMASTERSSHTUNNELPORT/" /etc/systemd/system/4Gbot-autossh-ssh.service
             enableAutossh
         else
             notification "Missing inputs for autossh service setup"
