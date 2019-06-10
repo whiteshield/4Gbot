@@ -56,7 +56,7 @@ If you can't connect, check the tunnel first:
 netstat -utapen | grep 22001
 ```
 
-If the tunnel already opened, but the ssh command unable to connect, kill the process which currently using port 22001:
+If the tunnel is already open, but the ssh command is unable to connect, kill the process which is currently using port 22001:
 
 ```
 fuser -k 22001/tcp
