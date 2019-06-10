@@ -1,5 +1,5 @@
 [Unit]
-Description=AutoSSH tunnel service to forward vnc to #FOURGBOTMASTERIP:#FOURGBOTMASTERVNCPORT with /root/.ssh/#FOURGBOTKEYFILE
+Description=AutoSSH tunnel service to forward local vnc to #FOURGBOTMASTERIP #FOURGBOTMASTERVNCTUNNELPORT with /root/.ssh/#FOURGBOTKEYFILE
 After=network.target
 
 [Service]
@@ -7,7 +7,7 @@ Type=forking
 User=root
 # PAMName=login
 # Environment="AUTOSSH_GATETIME=0"
-ExecStart=/usr/bin/autossh -M 0 -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -o "ServerAliveInterval 30" -o "ServerAliveCountMax 12000" -o "ExitOnForwardFailure=yes" -f -i /root/.ssh/#FOURGBOTKEYFILE -NR #FOURGBOTMASTERVNCPORT:localhost:5901 root@#FOURGBOTMASTERIP
+ExecStart=/usr/bin/autossh -M 0 -p #FOURGBOTMASTERSSHPORT -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -o "ServerAliveInterval 30" -o "ServerAliveCountMax 12000" -o "ExitOnForwardFailure=yes" -f -i /root/.ssh/#FOURGBOTKEYFILE -NR #FOURGBOTMASTERVNCTUNNELPORT:localhost:5901 #FOURGBOTMASTERUSER@#FOURGBOTMASTERIP
 
 [Install]
 WantedBy=multi-user.target

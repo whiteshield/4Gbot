@@ -1,21 +1,25 @@
 #!/bin/bash
 . 4Gbot-source
 
-if [ $# -ne 3 ] ; then
-    echo -e "${RED}Usage: 4Gbot-groundwork keyname bot_ip master_ip${SET}"
+if [ $# -ne 5 ] ; then
+    echo -e "${RED}Usage: 4Gbot-pre keyfile botip masterip masteruser mastersshport${SET}"
     exit
 else
-    FOURGBOTKEYNAME="$1"
-    FOURGBOTIPBOT="$2"
-    FOURGBOTIPMASTER="$3"
-    echo -e "${FOURGBOTGREEN}key         : $FOURGBOTKEYNAME${FOURGBOTSET}"
-    echo -e "${FOURGBOTGREEN}bot         : $FOURGBOTIPBOT${FOURGBOTSET}"
-    echo -e "${FOURGBOTGREEN}master      : $FOURGBOTIPMASTER${FOURGBOTSET}"
+    FOURGBOTKEYFILE="${1}"
+    FOURGBOTBOTIP="${2}"
+    FOURGBOTMASTERIP="${3}"
+    FOURGBOTMASTERUSER="${4}"
+    FOURGBOTMASTERSSHPORT="${5}"
+    echo -e "${FOURGBOTGREEN}ssh key file name          : $FOURGBOTKEYFILE${FOURGBOTSET}"
+    echo -e "${FOURGBOTGREEN}bot ip                     : $FOURGBOTBOTIP${FOURGBOTSET}"
+    echo -e "${FOURGBOTGREEN}master ip                  : $FOURGBOTMASTERIP${FOURGBOTSET}"
+    echo -e "${FOURGBOTGREEN}master ssh user            : $FOURGBOTMASTERUSER${FOURGBOTSET}"
+    echo -e "${FOURGBOTGREEN}master ssh port            : $FOURGBOTMASTERSSHPORT${FOURGBOTSET}"
 fi
 
-ssh-keygen -b 4096 -f $FOURGBOTDIR/backup/$FOURGBOTKEYNAME -C $FOURGBOTKEYNAME
-ssh-add -K $FOURGBOTDIR/backup/$FOURGBOTKEYNAME
-ssh-copy-id -i $FOURGBOTDIR/backup/$FOURGBOTKEYNAME root@$FOURGBOTIPBOT
-ssh-copy-id -i $FOURGBOTDIR/backup/$FOURGBOTKEYNAME root@$FOURGBOTIPMASTER
-scp $FOURGBOTDIR/backup/$FOURGBOTKEYNAME* root@$FOURGBOTIPBOT:/root/.ssh
-scp $FOURGBOTDIR/backup/$FOURGBOTKEYNAME* root@$FOURGBOTIPMASTER:/root/.ssh
+ssh-keygen -b 4096 -f $FOURGBOTDIR/backup/$FOURGBOTKEYFILE -C $FOURGBOTKEYFILE
+ssh-add -K $FOURGBOTDIR/backup/$FOURGBOTKEYFILE
+ssh-copy-id -i $FOURGBOTDIR/backup/$FOURGBOTKEYFILE root@$FOURGBOTBOTIP
+ssh-copy-id -i $FOURGBOTDIR/backup/$FOURGBOTKEYFILE $FOURGBOTMASTERUSER@$FOURGBOTMASTERIP
+scp $FOURGBOTDIR/backup/$FOURGBOTKEYFILE* root@$FOURGBOTBOTIP:/root/.ssh
+scp $FOURGBOTDIR/backup/$FOURGBOTKEYFILE* $FOURGBOTMASTERUSER@$FOURGBOTMASTERIP:./.ssh
